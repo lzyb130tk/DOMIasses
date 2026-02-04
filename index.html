@@ -65,7 +65,11 @@
                 .heart-meter { color: #ff4757; }
             }
 
-            .card-title-lg { font-size: 17px; font-weight: 800; color: var(--text-main); margin-bottom: 4px; line-height: 1.3; }
+            .card-title-lg { 
+                font-size: 17px; font-weight: 800; color: var(--text-main); margin-bottom: 4px; line-height: 1.3;
+                height: 44px; /* 强制固定2行高度，对齐卡片 */
+                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;
+            }
             .card-remark-sm { 
                 font-size: 12px; color: var(--text-sub); margin-bottom: 12px; line-height: 1.4;
                 display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;
