@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Asset Pro v5</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <style>
+        /* --- 1. 视觉系统 (iOS Design System) --- */
+        :root {
+            --bg-app: #f5f5f7;        /* iOS 风格浅灰 */
+            --bg-card: #ffffff;
+            --text-main: #1d1d1f;     /* Apple Black */
+            --text-sub: #86868b;
+            --text-tertiary: #d2d2d7;
+            
+            /* 品牌色 - 翡翠绿 */
+            --brand: #34c759;         
+            --accent: #000000;
+            --link-blue: #007aff;
+
+            /* 状态色 */
+            --status-active-bg: #e8fce8; --status-active-text: #178228;
+            --status-idle-bg: #fff5db;   --status-idle-text: #b58605;
+            --status-sold-bg: #f2f2f7;   --status-sold-text: #8e8e93;
+
+            /* 马卡龙色系 (Macaron Colors) - Low Saturation */
+            --mc-1: #ffb7b2; --mc-2: #ffdac1; --mc-3: #e2f0cb; --mc-4: #b5ead7; --mc-5: #c7ceea;
+            --mc-text: #5e5e5e;
+
+            /* 圆角与阴影 */
+            --r-xl: 20px; --r-lg: 16px; --r-md: 12px;
+            --shadow-card: 0 2px 8px rgba(0,0,0,0.03);
+            --shadow-float: 0 4px 16px rgba(0,0,0,0.08);
+
+            /* New Card Styles - v2 */
+            .card-top { display: flex; gap: 12px; margin-bottom: 10px; }
+            .card-thumb-lg { width: 80px; height: 80px; border-radius: 12px; object-fit: cover; background: #f2f2f7; flex-shrink: 0; }
+            .card-placeholder-lg { width: 80px; height: 80px; border-radius: 12px; background: #f2f2f7; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); font-size: 24px; flex-shrink: 0; }
+            
+            .card-info-right { flex: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+            
+            /* 注水爱心 */
+            .heart-meter {
+                font-size: 20px;
+                background: linear-gradient(to top, #ff4757 var(--percent, 0%), #e5e5ea var(--percent, 0%));
+                -webkit-background-clip: text; background-clip: text; color: transparent;
+                transition: --percent 0.3s;
+                display: inline-block;
+            }
+            /* 兼容性fallback: 如果不支持background-clip text，显示边框心 */
+            @supports not (-webkit-background-clip: text) {
+                .heart-meter { color: #ff4757; }
+            }
+
+            .card-title-lg { font-size: 17px; font-weight: 800; color: var(--text-main); margin-bottom: 4px; line-height: 1.3; }
+            .card-remark-sm { font-size: 12px; color: var(--text-sub); margin-bottom: 12px; line-height: 1.4; }
+            
+            .card-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+            .macaron-tag { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; color: var(--mc-text); background: var(--bg-app); }
+            .date-tag { font-size: 11px; color: var(--text-tertiary); margin-left: auto; font-family: "SF Pro Rounded"; }
+            
+            .link-icon-sm { color: var(--link-blue); font-size: 12px; display: flex; padding: 4px; }
+
+            /* 1-5 Heart Selector */
+            .favor-group { display: flex; gap: 12px; padding: 4px 0; }
+            .favor-btn { font-size: 26px; color: #e5e5ea; cursor: pointer; transition: transform 0.2s, color 0.2s; }
+            .favor-btn.active { color: #ff4757; transform: scale(1.1); }
+            .favor-btn:active { transform: scale(0.9); }
+        }
+
+        /*
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-app: #000000;
+                --bg-card: #1c1c1e;
+                --text-main: #f5f5f7;
+                --text-sub: #98989d;
+                --text-tertiary: #48484a;
+                --status-sold-bg: #2c2c2e; --status-sold-text: #aeaeb2;
+                
+                --mc-text: #333; 
+            }
+        }
+        */
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; background: var(--bg-app); height: 100vh; display: flex; justify-content: center; color: var(--text-main); overflow: hidden; }
+
+        .app-shell {
+            width: 100%; max-width: 480px; height: 100%;
+            background: var(--bg-app); display: flex; flex-direction: column; position: relative;
+        }
+
+        /* --- 顶部导航 --- */
+        .navbar {
+            padding: 16px 20px 10px 20px;
+            background: var(--bg-app);
+            display: flex; justify-content: space-between; align-items: flex-end;
+            z-index: 10;
+        }
+        .nav-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+        /* 极简添加按钮 */
+        .add-btn {
+            background: transparent; border: none; font-size: 24px; color: var(--accent);
+            cursor: pointer; padding: 4px; transition: opacity 0.2s;
+        }
+        .add-btn:active { opacity: 0.5; }
+
+        /* --- 数据看板 (Dashboard) --- */
+        .dashboard {
+            margin: 0 20px 24px 20px;
+            background: var(--bg-card);
+            border-radius: var(--r-xl);
+            padding: 20px;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header { font-size: 13px; font-weight: 600; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .dash-total { font-size: 34px; font-weight: 700; font-family: "SF Pro Display", sans-serif; letter-spacing: -0.5px; margin-bottom: 16px; }
+        
+        .dash-stats { display: flex; gap: 12px; }
+        .stat-item { flex: 1; background: var(--bg-app); border-radius: var(--r-md); padding: 10px; }
+        .stat-label { font-size: 11px; color: var(--text-sub); margin-bottom: 2px; }
+        .stat-val { font-size: 15px; font-weight: 600; }
+
+        /* --- 分类筛选 --- */
+        .filter-scroll {
+            padding: 0 20px 16px 20px;
+            display: flex; gap: 8px;
+            overflow-x: auto; scrollbar-width: none;
+        }
+        .filter-scroll::-webkit-scrollbar { display: none; }
+        .chip {
+            padding: 6px 14px; background: var(--bg-card); border-radius: 20px;
+            font-size: 13px; font-weight: 600; color: var(--text-sub);
+            white-space: nowrap; cursor: pointer; transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .chip.active { background: var(--text-main); color: var(--bg-card); }
+
+        /* --- 视图容器 --- */
+        .view-section { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+        .view-section.active { display: flex; }
+
+        /* --- 网格列表 (Grid View) --- */
+        .grid-view {
+            flex: 1; overflow-y: auto; padding: 0 20px 100px 20px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+            align-content: start;
+        }
+        .grid-view::-webkit-scrollbar { display: none; }
+
+        .card {
+            background: var(--bg-card); border-radius: var(--r-xl); overflow: hidden;
+            box-shadow: var(--shadow-card); cursor: pointer; position: relative;
+            display: flex; flex-direction: column; transition: transform 0.1s;
+            padding: 16px; 
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+        .card:active { transform: scale(0.98); }
+        
+        .card-body { padding: 0; } /* Reset padding */
+        .card-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-meta { font-size: 11px; color: var(--text-sub); margin-bottom: 0; display: flex; justify-content: space-between; }
+        .card-footer { display: flex; justify-content: space-between; align-items: center; }
+        .card-price { font-size: 15px; font-weight: 700; font-family: "SF Pro Rounded", sans-serif; }
+        
+        /* 购买链接小图标 */
+        .link-badge { 
+            width: 22px; height: 22px; border-radius: 50%; 
+            background: #f0f9ff; color: var(--link-blue); 
+            display: flex; align-items: center; justify-content: center; font-size: 11px;
+        }
+
+        /* --- 时间轴 (Timeline View) --- */
+        .timeline-view {
+            flex: 1; overflow-y: auto; padding: 10px 20px 100px 20px;
+        }
+        .tl-item { display: flex; gap: 16px; margin-bottom: 24px; }
+        
+        .tl-left { width: 45px; flex-shrink: 0; text-align: right; padding-top: 4px; }
+        .tl-year { font-size: 10px; color: var(--text-sub); }
+        .tl-date-num { font-size: 18px; font-weight: 700; font-family: "SF Pro Rounded", sans-serif; line-height: 1.2; }
+        .tl-month { font-size: 11px; color: var(--text-sub); }
+
+        .tl-center { width: 16px; display: flex; flex-direction: column; align-items: center; }
+        .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-tertiary); border: 2px solid var(--bg-app); flex-shrink: 0; z-index: 2; margin-top: 8px; }
+        .tl-line { width: 2px; flex: 1; background: #e5e5ea; margin-top: -2px; margin-bottom: -24px; border-radius: 1px; }
+        
+        .tl-right { flex: 1; min-width: 0; }
+        .tl-card {
+            background: var(--bg-card); border-radius: var(--r-lg); padding: 12px;
+            display: flex; gap: 12px; box-shadow: var(--shadow-card);
+            cursor: pointer; position: relative;
+        }
+        .tl-thumb { width: 56px; height: 56px; border-radius: 10px; background: #f2f2f7; object-fit: cover; flex-shrink: 0; }
+        .tl-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+        .tl-name { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+        .tl-meta { font-size: 12px; color: var(--text-sub); display: flex; gap: 8px; align-items: center; }
+        .tl-price { font-weight: 700; color: var(--text-main); margin-left: auto; }
+        .tl-link-btn { font-size: 12px; color: var(--link-blue); padding: 4px; z-index: 5; }
+
+        /* --- 弹窗 (Modal) --- */
+        .modal-mask {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
+            z-index: 100; display: none; justify-content: center; align-items: flex-end;
+        }
+        .modal-sheet {
+            background: var(--bg-card); width: 100%; max-width: 480px;
+            border-radius: 24px 24px 0 0; padding: 24px;
+            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            max-height: 70vh; overflow-y: auto;
+        }
+        .modal-mask.open .modal-sheet { transform: translateY(0); }
+        .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .sheet-title { font-size: 20px; font-weight: 700; }
+
+        /* 上传区域 */
+        .upload-box {
+            width: 120px; height: 120px; background: var(--bg-app);
+            border-radius: 16px; margin-bottom: 20px; margin-left: auto; margin-right: auto;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; overflow: hidden;
+            border: 2px dashed #e5e5e5;
+        }
+        .preview-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 5; }
+        .icon-plus { font-size: 24px; color: var(--text-tertiary); }
+        .btn-rm-img { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; background: rgba(0,0,0,0.6); color: #fff; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 10px; }
+
+        /* 表单 */
+        .input-group { margin-bottom: 16px; }
+        .label { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 8px; display: block; }
+        .input { width: 100%; padding: 12px 16px; background: var(--bg-app); border: none; border-radius: 12px; font-size: 16px; color: var(--text-main); }
+        .row { display: flex; gap: 12px; }
+        .col { flex: 1; }
+
+        .btn-save { width: 100%; padding: 16px; background: var(--text-main); color: var(--bg-card); border-radius: 16px; font-weight: 700; border: none; font-size: 16px; margin-top: 10px; }
+        .btn-del { width: 100%; padding: 16px; background: transparent; color: #ff3b30; border: none; font-weight: 600; font-size: 14px; margin-top: 4px; display: none; }
+
+        /* --- 底部 Tab --- */
+        .tabbar {
+            background: var(--bg-card); height: 85px; padding-bottom: 20px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            display: flex; justify-content: space-around; align-items: center;
+            position: fixed; bottom: 0; width: 100%; max-width: 480px;
+        }
+        .tab-btn {
+            background: transparent; border: none;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            color: var(--text-tertiary); cursor: pointer; flex: 1;
+        }
+        .tab-btn.active { color: var(--text-main); }
+        .tab-btn i { font-size: 22px; }
+        .tab-btn span { font-size: 10px; font-weight: 600; }
+
+        /* 灰度类 */
+        /* 状态标签样式 */
+        .tag-status-sm { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 8px; font-size: 11px; font-weight: 600; width: fit-content; }
+        .tag-status-sm .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+        .archived { opacity: 0.6; filter: grayscale(100%); }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+    
+    <section id="view-assets" class="view-section active">
+        <div class="navbar">
+            <div class="nav-title">我的资产</div>
+            <button class="add-btn" onclick="Modal.open()"><i class="fa-solid fa-plus"></i></button>
+        </div>
+
+        <div class="dashboard">
+            <div class="dash-header">Total Value</div>
+            <div class="dash-total">¥<span id="dash-val">0.00</span></div>
+            <div class="dash-stats">
+                <div class="stat-item">
+                    <div class="stat-label">物品数量</div>
+                    <div class="stat-val" id="dash-count">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">服役中</div>
+                    <div class="stat-val" id="dash-active" style="color:var(--brand)">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-scroll">
+            <div class="chip active" onclick="App.filter('all', this)">全部</div>
+            <div class="chip" onclick="App.filter('数码', this)">数码</div>
+            <div class="chip" onclick="App.filter('家居', this)">家居</div>
+            <div class="chip" onclick="App.filter('服饰', this)">服饰</div>
+            <div class="chip" onclick="App.filter('办公', this)">办公</div>
+            <div class="chip" onclick="App.filter('交通', this)">交通</div>
+            <div class="chip" onclick="App.filter('其他', this)">其他</div>
+        </div>
+
+        <div class="grid-view" id="asset-grid">
+            </div>
+    </section>
+
+    <section id="view-timeline" class="view-section">
+        <div class="navbar">
+            <div class="nav-title">时间线</div>
+        </div>
+        <div class="timeline-view" id="timeline-container">
+            </div>
+    </section>
+
+    <section id="view-settings" class="view-section">
+        <div class="navbar"><div class="nav-title">设置</div></div>
+        <div style="padding: 20px;">
+            <div style="background:var(--bg-card); border-radius:16px; padding:20px; margin-bottom:20px; box-shadow:var(--shadow-card);">
+                <h3 style="margin-top:0;">数据管理</h3>
+                <p style="font-size:12px; color:var(--text-sub); margin-bottom:16px;">
+                    数据存储在浏览器本地数据库中。请定期备份。
+                </p>
+                <button onclick="Data.exportZip()" class="btn-save" style="margin-top:0; margin-bottom:10px; background:var(--bg-app); color:var(--text-main);">备份数据</button>
+                <label class="btn-save" style="display:flex; justify-content:center; align-items:center; margin-top:0; margin-bottom:10px; background:var(--bg-app); color:var(--text-main);">
+                    恢复数据 <input type="file" hidden accept=".json,.zip" onchange="Data.import(this)">
+                </label>
+            </div>
+            <button onclick="Data.clear()" style="width:100%; padding:16px; border:none; background:#fee2e2; color:#ff3b30; border-radius:16px; font-weight:700;">清空所有数据</button>
+        </div>
+    </section>
+
+    <div class="tabbar">
+        <button class="tab-btn active" onclick="Nav.switch('view-assets', this)">
+            <i class="fa-solid fa-layer-group"></i> <span>资产</span>
+        </button>
+        <button class="tab-btn" onclick="Nav.switch('view-timeline', this)">
+            <i class="fa-solid fa-clock-rotate-left"></i> <span>时光</span>
+        </button>
+        <button class="tab-btn" onclick="Nav.switch('view-settings', this)">
+            <i class="fa-solid fa-gear"></i> <span>设置</span>
+        </button>
+    </div>
+
+</div>
+
+<div id="modal-mask" class="modal-mask">
+    <div class="modal-sheet">
+        <div class="sheet-head">
+            <div class="sheet-title" id="modal-title">新资产</div>
+            <div onclick="Modal.close()" style="padding:5px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></div>
+        </div>
+        
+        <input type="hidden" id="inp-id">
+        
+        <div class="upload-box" onclick="document.getElementById('file-up').click()">
+            <i class="fa-solid fa-camera icon-plus"></i>
+            <img id="img-prev" class="preview-img">
+            <div id="btn-rm-img" class="btn-rm-img" onclick="event.stopPropagation(); App.clearImg()"><i class="fa-solid fa-xmark"></i></div>
+            <input type="file" id="file-up" hidden accept="image/*" onchange="App.handleImg(this)">
+        </div>
+
+        <div class="input-group">
+            <div class="label">名称</div>
+            <input type="text" id="inp-name" class="input" placeholder="例如: iPhone 15 Pro" style="font-weight:700;">
+        </div>
+
+        <div class="row">
+            <div class="col input-group">
+                <div class="label">价格 (¥)</div>
+                <input type="number" id="inp-price" class="input">
+            </div>
+            <div class="col input-group">
+                <div class="label">购买日期</div>
+                <input type="date" id="inp-date" class="input">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col input-group">
+                <div class="label">分类</div>
+                <input type="text" id="inp-cat" class="input" list="cat-list" placeholder="选择或输入">
+                <datalist id="cat-list">
+                    <option value="数码"><option value="家居"><option value="服饰"><option value="办公"><option value="交通">
+                </datalist>
+            </div>
+            <div class="col input-group">
+                <div class="label">状态</div>
+                <select id="inp-status" class="input">
+                    <option value="active">服役中</option>
+                    <option value="idle">闲置</option>
+                    <option value="sold">已出</option>
+                    <option value="lost">报废</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <div class="label">心水程度 (1-5)</div>
+            <div class="favor-group">
+                <i class="fa-solid fa-heart favor-btn" onclick="App.setFavor(1)" id="fav-1"></i>
+                <i class="fa-solid fa-heart favor-btn" onclick="App.setFavor(2)" id="fav-2"></i>
+                <i class="fa-solid fa-heart favor-btn" onclick="App.setFavor(3)" id="fav-3"></i>
+                <i class="fa-solid fa-heart favor-btn" onclick="App.setFavor(4)" id="fav-4"></i>
+                <i class="fa-solid fa-heart favor-btn" onclick="App.setFavor(5)" id="fav-5"></i>
+            </div>
+            <input type="hidden" id="inp-favor">
+        </div>
+
+        <div class="input-group">
+            <div class="label">购买链接 (URL)</div>
+            <input type="url" id="inp-link" class="input" placeholder="https://...">
+        </div>
+
+        <div class="input-group">
+            <div class="label">备注</div>
+            <textarea id="inp-remark" class="input" rows="2" placeholder="填写备注信息..."></textarea>
+        </div>
+
+        <button class="btn-save" onclick="App.save()">保 存</button>
+        <button id="btn-del" class="btn-del" onclick="App.del()">删除资产</button>
+    </div>
+</div>
+
+<script>
+    /* --- IndexedDB 封装 --- */
+    const DB_NAME = 'asset_pro_v5';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'assets';
+
+    const IDB = {
+        db: null,
+        init: () => {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = (e) => {
+                    IDB.db = e.target.result;
+                    resolve(IDB.db);
+                };
+                request.onerror = (e) => reject(e);
+            });
+        },
+        getAll: () => {
+            return new Promise((resolve, reject) => {
+                const tx = IDB.db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        },
+        save: (item) => {
+            return new Promise((resolve, reject) => {
+                const tx = IDB.db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.put(item); // put = insert or update
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        },
+        delete: (id) => {
+            return new Promise((resolve, reject) => {
+                const tx = IDB.db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.delete(id);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        },
+        clear: () => {
+             return new Promise((resolve, reject) => {
+                const tx = IDB.db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.clear();
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+    };
+
+    /* --- App Logic --- */
+    const App = {
+        data: [],
+        filterCat: 'all',
+        tempImg: null,
+
+        init: async () => {
+            try {
+                await IDB.init();
+                await App.refreshData();
+                document.getElementById('inp-date').valueAsDate = new Date();
+            } catch (e) {
+                console.error("DB Error", e);
+                alert("数据库初始化失败，请使用现代浏览器");
+            }
+        },
+
+        refreshData: async () => {
+            App.data = await IDB.getAll();
+            // 默认按日期倒序
+            App.data.sort((a, b) => new Date(b.date) - new Date(a.date));
+            App.renderGrid();
+            App.renderTimeline();
+        },
+
+        // 图片处理
+        handleImg: (input) => {
+            const f = input.files[0];
+            if(!f) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const max = 500; 
+                    const scale = max / img.width;
+                    canvas.width = max; canvas.height = img.height * scale;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    App.tempImg = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    const p = document.getElementById('img-prev');
+                    p.src = App.tempImg; p.style.display = 'block';
+                    document.getElementById('btn-rm-img').style.display = 'flex';
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(f);
+        },
+        clearImg: () => {
+            App.tempImg = null;
+            document.getElementById('img-prev').style.display = 'none';
+            document.getElementById('file-up').value = '';
+            document.getElementById('btn-rm-img').style.display = 'none';
+        },
+        
+        setFavor: (val) => {
+            document.getElementById('inp-favor').value = val;
+            for(let i=1; i<=5; i++) {
+                const el = document.getElementById('fav-'+i);
+                if(i <= val) el.classList.add('active');
+                else el.classList.remove('active');
+            }
+        },
+
+        // 渲染 Tab 1: 网格
+        renderGrid: () => {
+            const grid = document.getElementById('asset-grid');
+            grid.innerHTML = '';
+            
+            let total = 0, count = 0, activeCount = 0;
+            const filtered = App.data.filter(i => App.filterCat === 'all' || i.cat === App.filterCat);
+
+            filtered.forEach(item => {
+                const isActive = item.status === 'active' || item.status === 'idle';
+                if(isActive) {
+                    total += item.price;
+                    activeCount++;
+                }
+                count++;
+
+                let stText='服役', stColor='var(--status-active-text)', stBg='var(--status-active-bg)', stDot='#34c759';
+                if(item.status==='idle'){stText='闲置'; stColor='var(--status-idle-text)'; stBg='var(--status-idle-bg)'; stDot='#f59e0b';}
+                if(item.status==='sold'){stText='已出'; stColor='var(--status-sold-text)'; stBg='var(--status-sold-bg)'; stDot='#9ca3af';}
+                if(item.status==='lost'){stText='报废'; stColor='#fff'; stBg='#ff3b30'; stDot='#fff';}
+
+                const isArchived = item.status === 'sold' || item.status === 'lost';
+                
+                const card = document.createElement('div');
+                card.className = `card ${isArchived?'archived':''}`;
+                card.onclick = () => Modal.open(item.id);
+
+                const imgHTML = item.img ? `<img src="${item.img}" class="card-thumb-lg" loading="lazy">` : `<div class="card-placeholder-lg"><i class="fa-solid fa-box"></i></div>`;
+                
+                // 购买链接按钮
+                const linkHTML = item.link ? `<a href="${item.link}" target="_blank" onclick="event.stopPropagation()" class="link-icon-sm"><i class="fa-solid fa-link"></i></a>` : '';
+                const remarkHTML = item.remark ? `<div class="card-remark-sm">${item.remark}</div>` : '';
+                
+                // 爱心填充
+                const favorPercent = item.favor !== undefined ? item.favor : 50;
+                
+                // 马卡龙 Tag 颜色
+                const mcColor = App.getMacaronColor(item.cat);
+
+                card.innerHTML = `
+                    <div class="card-top">
+                        ${imgHTML}
+                        <div class="card-info-right">
+                             <div class="tag-status-sm" style="background:${stBg}; color:${stColor}">
+                                <div class="dot" style="background:${stDot}"></div>${stText}
+                             </div>
+                             <div class="heart-meter" style="--percent: ${favorPercent}%">
+                                <i class="fa-solid fa-heart"></i>
+                             </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-title-lg">${item.name}</div>
+                    ${remarkHTML}
+
+                    <div class="card-meta-row">
+                        <span class="macaron-tag" style="background:${mcColor}">${item.cat}</span>
+                        ${linkHTML}
+                        <span class="date-tag">${item.date}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            document.getElementById('dash-val').innerText = total.toLocaleString();
+            document.getElementById('dash-count').innerText = count;
+            document.getElementById('dash-active').innerText = activeCount;
+        },
+
+        // 渲染 Tab 2: 时间轴
+        renderTimeline: () => {
+            const tl = document.getElementById('timeline-container');
+            tl.innerHTML = '';
+            
+            // 数据已按时间倒序
+            if(App.data.length === 0) {
+                tl.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-sub);">暂无时间线数据</div>`;
+                return;
+            }
+
+            App.data.forEach(item => {
+                const dateObj = new Date(item.date);
+                const year = dateObj.getFullYear();
+                const month = dateObj.getMonth() + 1;
+                const day = dateObj.getDate();
+                const displayMonth = month + '月';
+                
+                const isArchived = item.status === 'sold' || item.status === 'lost';
+
+                const thumb = item.img ? `<img src="${item.img}" class="tl-thumb">` : `<div class="tl-thumb" style="display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-box" style="color:#ccc;"></i></div>`;
+                const linkBtn = item.link ? `<a href="${item.link}" target="_blank" onclick="event.stopPropagation()" class="tl-link-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : '';
+
+                const el = document.createElement('div');
+                el.className = 'tl-item';
+                el.innerHTML = `
+                    <div class="tl-left">
+                        <div class="tl-year">${year}</div>
+                        <div class="tl-date-num">${month}/${day}</div>
+                    </div>
+                    <div class="tl-center">
+                        <div class="tl-dot"></div>
+                        <div class="tl-line"></div>
+                    </div>
+                    <div class="tl-right">
+                        <div class="tl-card ${isArchived?'archived':''}" onclick="Modal.open(${item.id})">
+                            ${thumb}
+                            <div class="tl-info">
+                                <div class="tl-name">${item.name}</div>
+                                <div class="tl-meta">${item.cat} ${linkBtn}</div>
+                            </div>
+                            <div class="tl-price">¥${item.price}</div>
+                        </div>
+                    </div>
+                `;
+                tl.appendChild(el);
+            });
+        },
+
+        filter: (cat, el) => {
+            App.filterCat = cat;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            App.renderGrid();
+        },
+
+        getMacaronColor: (cat) => {
+            const colors = ['var(--mc-1)', 'var(--mc-2)', 'var(--mc-3)', 'var(--mc-4)', 'var(--mc-5)'];
+            let hash = 0;
+            for (let i = 0; i < cat.length; i++) hash = cat.charCodeAt(i) + ((hash << 5) - hash);
+            return colors[Math.abs(hash) % colors.length];
+        },
+
+        save: async () => {
+            const id = document.getElementById('inp-id').value;
+            const name = document.getElementById('inp-name').value;
+            const price = document.getElementById('inp-price').value;
+            if(!name || !price) return alert("请填写名称和价格");
+
+            const item = {
+                id: id ? Number(id) : Date.now(),
+                name,
+                price: Number(price),
+                cat: document.getElementById('inp-cat').value || '其他',
+                date: document.getElementById('inp-date').value,
+                status: document.getElementById('inp-status').value,
+                favor: (Number(document.getElementById('inp-favor').value) || 3) * 20, // 1-5 -> 20-100%
+                link: document.getElementById('inp-link').value,
+                remark: document.getElementById('inp-remark').value,
+                img: App.tempImg // 如果没修改图片，需从旧数据读取
+            };
+
+            // 如果是编辑且没换图，保持原图
+            if(id && !App.tempImg) {
+                const old = App.data.find(i => i.id == id);
+                if(old) item.img = old.img;
+            }
+
+            await IDB.save(item);
+            await App.refreshData();
+            Modal.close();
+        },
+
+        del: async () => {
+            const id = Number(document.getElementById('inp-id').value);
+            if(confirm("确定删除？")) {
+                await IDB.delete(id);
+                await App.refreshData();
+                Modal.close();
+            }
+        }
+    };
+
+    const Modal = {
+        open: (id) => {
+            const mask = document.getElementById('modal-mask');
+            mask.style.display = 'flex';
+            setTimeout(() => mask.classList.add('open'), 10);
+            
+            App.clearImg();
+            const delBtn = document.getElementById('btn-del');
+            
+            if(id) {
+                const item = App.data.find(i => i.id === id);
+                document.getElementById('modal-title').innerText = '编辑资产';
+                document.getElementById('inp-id').value = item.id;
+                document.getElementById('inp-name').value = item.name;
+                document.getElementById('inp-price').value = item.price;
+                document.getElementById('inp-cat').value = item.cat;
+                document.getElementById('inp-date').value = item.date;
+                document.getElementById('inp-status').value = item.status;
+                const favVal = (item.favor !== undefined ? item.favor : 60) / 20;
+                App.setFavor(Math.round(favVal) || 3);
+                document.getElementById('inp-link').value = item.link || '';
+                document.getElementById('inp-remark').value = item.remark || '';
+                
+                if(item.img) {
+                    App.tempImg = null; // 标记未修改
+                    document.getElementById('img-prev').src = item.img;
+                    document.getElementById('img-prev').style.display = 'block';
+                }
+                delBtn.style.display = 'block';
+            } else {
+                document.getElementById('modal-title').innerText = '新资产';
+                document.getElementById('inp-id').value = '';
+                document.getElementById('inp-name').value = '';
+                document.getElementById('inp-price').value = '';
+                document.getElementById('inp-cat').value = '';
+                document.getElementById('inp-status').value = 'active';
+                App.setFavor(3); // Default 3 stars (60%)
+                document.getElementById('inp-link').value = '';
+                document.getElementById('inp-remark').value = '';
+                delBtn.style.display = 'none';
+            }
+        },
+        close: () => {
+            const mask = document.getElementById('modal-mask');
+            mask.classList.remove('open');
+            setTimeout(() => mask.style.display = 'none', 300);
+        }
+    };
+
+    const Nav = {
+        switch: (id, btn) => {
+            document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+    };
+
+    const Data = {
+        exportZip: async () => {
+            const zip = new JSZip();
+            const cleanData = JSON.parse(JSON.stringify(App.data)); // Deep clone
+            const imgFolder = zip.folder("images");
+
+            cleanData.forEach(item => {
+                if(item.img && item.img.startsWith('data:image')) {
+                    try {
+                        // Extract extension and base64 data
+                        const parts = item.img.split(';');
+                        const mime = parts[0].split(':')[1];
+                        const ext = mime.split('/')[1];
+                        const base64Data = item.img.split(',')[1];
+                        
+                        const filename = `${item.id}.${ext}`;
+                        imgFolder.file(filename, base64Data, {base64: true});
+                        
+                        // Replace huge base64 string with relative path
+                        item.img = `images/${filename}`;
+                    } catch(e) {
+                        console.error("Image export error", e);
+                    }
+                }
+            });
+
+            zip.file("data.json", JSON.stringify(cleanData));
+            
+            try {
+                const blob = await zip.generateAsync({type:"blob"});
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                const date = new Date().toISOString().slice(0,10);
+                a.download = `assets_${date}.zip`;
+                a.click();
+            } catch(e) {
+                alert("压缩失败: " + e.message);
+            }
+        },
+
+        import: (input) => {
+            const f = input.files[0]; if(!f) return;
+            
+            // Branch for ZIP
+            if(f.name.endsWith('.zip')) {
+                Data.importZip(f);
+                return;
+            }
+
+            // Legacy JSON support
+            const r = new FileReader();
+            r.onload = async (e) => {
+                if(confirm("确定恢复数据 (JSON)？这将覆盖现有数据")) {
+                    try {
+                        const json = JSON.parse(e.target.result);
+                        await IDB.clear();
+                        for(let item of json) await IDB.save(item);
+                        await App.refreshData();
+                        alert("恢复成功");
+                    } catch(err) { alert("JSON解析失败"); }
+                }
+            };
+            r.readAsText(f);
+        },
+
+        importZip: async (file) => {
+            if(!confirm("确定恢复备份 (ZIP)？这将覆盖现有数据")) return;
+            
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const dataFile = zip.file("data.json");
+                if(!dataFile) throw new Error("缺少 data.json");
+                
+                const jsonStr = await dataFile.async("string");
+                const tasks = JSON.parse(jsonStr);
+                
+                // Reconstruct images
+                for(let item of tasks) {
+                    if(item.img && !item.img.startsWith('data:') && !item.img.startsWith('http')) {
+                        // It's a relative path, likely "images/xxx.ext"
+                        const imgFile = zip.file(item.img);
+                        if(imgFile) {
+                            const b64 = await imgFile.async("base64");
+                            const ext = item.img.split('.').pop();
+                            const mime = (ext === 'png' || ext === 'PNG') ? 'image/png' : 'image/jpeg';
+                            item.img = `data:${mime};base64,${b64}`;
+                        }
+                    }
+                }
+                
+                await IDB.clear();
+                for(let item of tasks) await IDB.save(item);
+                await App.refreshData();
+                alert("导入成功");
+                
+            } catch(e) {
+                console.error(e);
+                alert("导入失败: " + e.message);
+            }
+        },
+
+        clear: async () => {
+            if(confirm("危险：确定清空所有数据？")) {
+                await IDB.clear();
+                await App.refreshData();
+            }
+        }
+    };
+
+    // 启动
+    App.init();
+
+</script>
+</body>
+</html>
