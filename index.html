@@ -66,7 +66,11 @@
             }
 
             .card-title-lg { font-size: 17px; font-weight: 800; color: var(--text-main); margin-bottom: 4px; line-height: 1.3; }
-            .card-remark-sm { font-size: 12px; color: var(--text-sub); margin-bottom: 12px; line-height: 1.4; }
+            .card-remark-sm { 
+                font-size: 12px; color: var(--text-sub); margin-bottom: 12px; line-height: 1.4;
+                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;
+                height: 34px; /* Fixed height for 2 lines */
+            }
             
             .card-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
             .macaron-tag { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; color: var(--mc-text); background: var(--bg-app); }
@@ -344,6 +348,17 @@
         </div>
     </section>
 
+    <!-- 备注查看弹窗 -->
+    <div id="remark-modal-mask" class="modal-mask" onclick="RemarkModal.close()" style="align-items: center;">
+        <div class="modal-sheet" style="border-radius: 20px; max-width: 320px; margin: auto; transform: scale(0.9); opacity: 0; transition: all 0.2s;" onclick="event.stopPropagation()">
+            <div class="sheet-head" style="margin-bottom: 10px;">
+                <div class="sheet-title" style="font-size: 18px;">完整备注</div>
+                <div onclick="RemarkModal.close()" style="padding:5px; cursor:pointer;"><i class="fa-solid fa-xmark"></i></div>
+            </div>
+            <div id="remark-content" style="font-size: 14px; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; max-height: 50vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+
     <div class="tabbar">
         <button class="tab-btn active" onclick="Nav.switch('view-assets', this)">
             <i class="fa-solid fa-layer-group"></i> <span>资产</span>
@@ -594,7 +609,7 @@
                 
                 // 购买链接按钮
                 const linkHTML = item.link ? `<a href="${item.link}" target="_blank" onclick="event.stopPropagation()" class="link-icon-sm"><i class="fa-solid fa-link"></i></a>` : '';
-                const remarkHTML = item.remark ? `<div class="card-remark-sm">${item.remark}</div>` : '';
+                const remarkHTML = item.remark ? `<div class="card-remark-sm" onclick="event.stopPropagation(); RemarkModal.open('${item.remark.replace(/'/g, "\\'")}')">${item.remark}</div>` : '<div class="card-remark-sm"></div>';
                 
                 // 爱心填充
                 const favorPercent = item.favor !== undefined ? item.favor : 50;
@@ -790,6 +805,29 @@
             document.getElementById(id).classList.add('active');
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+        }
+    };
+
+    const RemarkModal = {
+        open: (text) => {
+            if(!text) return;
+            document.getElementById('remark-content').innerText = text;
+            const mask = document.getElementById('remark-modal-mask');
+            mask.style.display = 'flex';
+            const sheet = mask.querySelector('.modal-sheet');
+            
+            // Wait for display:flex to apply
+            setTimeout(() => {
+                sheet.style.transform = 'scale(1)';
+                sheet.style.opacity = '1';
+            }, 10);
+        },
+        close: () => {
+            const mask = document.getElementById('remark-modal-mask');
+            const sheet = mask.querySelector('.modal-sheet');
+            sheet.style.transform = 'scale(0.9)';
+            sheet.style.opacity = '0';
+            setTimeout(() => mask.style.display = 'none', 200);
         }
     };
 
