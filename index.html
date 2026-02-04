@@ -170,8 +170,10 @@
         .grid-view {
             flex: 1; overflow-y: auto; padding: 0 20px 100px 20px;
             display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+            grid-auto-rows: min-content; /* 关键修复：强制行高由内容决定，禁止压缩 */
             align-content: start;
             -webkit-overflow-scrolling: touch;
+            min-height: 0; /* 关键修复：允许Flex子元素正确滚动 */
         }
         .grid-view::-webkit-scrollbar { display: none; }
 
@@ -181,6 +183,8 @@
             display: flex; flex-direction: column; transition: transform 0.1s;
             padding: 16px; 
             border: 1px solid rgba(0,0,0,0.03);
+            height: auto; /* 确保不被父容器强制拉伸或压缩 */
+            flex-shrink: 0; /* 也是为了防止意外压缩 */
         }
         .card:active { transform: scale(0.98); }
         
